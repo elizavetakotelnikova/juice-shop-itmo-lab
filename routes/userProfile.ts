@@ -8,6 +8,8 @@ import { AllHtmlEntities as Entities } from 'html-entities'
 import config from 'config'
 import pug from 'pug'
 import fs from 'node:fs/promises'
+import escapeHtml from 'escape-html';
+
 
 import * as challengeUtils from '../lib/challengeUtils'
 import { themes } from '../views/themes/themes'
@@ -54,17 +56,15 @@ export function getUserProfile () {
 
     if (username?.match(/#{(.*)}/) !== null && utils.isChallengeEnabled(challenges.usernameXssChallenge)) {
       req.app.locals.abused_ssti_bug = true
-      const code = username?.substring(2, username.length - 1)
-      try {
-        if (!code) {
-          throw new Error('Username is null')
-        }
-        username = eval(code) // eslint-disable-line no-eval
-      } catch (err) {
-        username = '\\' + username
+      const codeMatch = username.match(/#\{(.*)\}/);
+      if (codeMatch && codeMatch[1]) {
+        const safeContent = escapeHtml(codeMatch[1].trim());
+        username = safeContent; // теперь безопасно
+      } else {
+        username = '\\' + escapeHtml(username);
       }
     } else {
-      username = '\\' + username
+      username = '\\' + escapeHtml(username);
     }
 
     const themeKey = config.get<string>('application.theme') as keyof typeof themes

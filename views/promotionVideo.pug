@@ -68,6 +68,15 @@ html(lang='en')
             var lines = vtt.trim().replace('\\r\n', '\n').split(/[\r\n]/).map(function(line) {
             return line.trim();
             });
+            function escapeHtml(str) {
+            if (!str) return '';
+            return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+            }
             var cues = [];
             var start = null;
             var end = null;
@@ -76,7 +85,8 @@ html(lang='en')
             if (lines[i].indexOf('-->') >= 0) {
             var splitted = lines[i].split(/[ \\t]+-->[ \t]+/);
             if (splitted.length != 2) {
-            throw 'Error when splitting "-->": ' + lines[i];
+            const safeLine = escapeHtml(lines[i]);
+            throw new Error(`Error when splitting "-->": ${safeLine}`);
             }
             // Already ignoring anything past the "end" timestamp (i.e. cue settings).
             start = parse_timestamp(splitted[0]);

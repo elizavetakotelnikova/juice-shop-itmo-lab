@@ -4,17 +4,33 @@
  */
 
 import path from 'node:path'
+import fs from 'fs';
 import { type Request, type Response, type NextFunction } from 'express'
 
-export function serveKeyFiles () {
+export function serveKeyFiles() {
   return ({ params }: Request, res: Response, next: NextFunction) => {
-    const file = params.file
+    const file = params.file;
 
-    if (!file.includes('/')) {
-      res.sendFile(path.resolve('encryptionkeys/', file))
-    } else {
-      res.status(403)
-      next(new Error('File names cannot contain forward slashes!'))
+    if (!file) {
+      res.status(400);
+      return next(new Error('File parameter is required'));
     }
-  }
+
+    const keyDir = path.resolve('encryptionkeys');
+    const requestedPath = path.join(keyDir, file);
+    const resolvedPath = path.resolve(requestedPath);
+
+   const keyDirWithSep = keyDir + path.sep;
+    if (!resolvedPath.startsWith(keyDirWithSep)) {
+      res.status(403);
+      return next(new Error('Invalid file path – access denied'));
+    }
+
+    if (!fs.existsSync(resolvedPath)) {
+      res.status(404);
+      return next(new Error('File not found'));
+    }
+
+    res.sendFile(resolvedPath);
+  };
 }

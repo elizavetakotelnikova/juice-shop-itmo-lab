@@ -26,9 +26,18 @@ export function retrieveLoggedInUser () {
 
         if (requestedFields.length > 0) {
           // When fields are specified, return only those fields
+          const allowedFields = ['name', 'email', 'role'] as const;
+
           for (const field of requestedFields) {
-            if (user?.data[field as keyof typeof user.data] !== undefined) {
-              baseUser[field] = user?.data[field as keyof typeof user.data]
+            if (!allowedFields.includes(field as typeof allowedFields[number])) {
+              continue;
+            }
+
+            // @ts-ignore
+            const key = field as keyof typeof user.data;
+
+            if (user?.data[key] !== undefined) {
+               baseUser[key] = user.data[key];
             }
           }
         } else {

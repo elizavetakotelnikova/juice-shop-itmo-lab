@@ -4,6 +4,7 @@
  */
 
 import fs from 'node:fs/promises'
+import sanitizeHtml from 'sanitize-html';
 import { type Request, type Response, type NextFunction } from 'express'
 import { type User } from '../data/types'
 import { UserModel } from '../models/user'
@@ -199,11 +200,15 @@ export const status = function status () {
     }
 
     try {
-      bot.addUser(`${user.id}`, username)
+      const safeUserId = sanitizeHtml(user.id);
+      const safeUsername = sanitizeHtml(username);
+      bot.addUser(safeUserId, safeUsername);
       res.status(200).json({
         status: bot.training.state,
-        body: bot.training.state ? bot.greet(`${user.id}`) : `${config.get<string>('application.chatBot.name')} isn't ready at the moment, please wait while I set things up`
-      })
+        body: bot.training.state
+            ? bot.greet(safeUserId)
+            : `${sanitizeHtml(config.get<string>('application.chatBot.name'))} isn't ready at the moment, please wait while I set things up`
+      });
     } catch (err) {
       next(new Error('Blocked illegal activity by ' + req.socket.remoteAddress))
     }
