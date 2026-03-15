@@ -73,9 +73,11 @@ function getCodingChallengeFromFileContent (source: string, challengeKey: string
   const vulnLines = []
   const neutralLines = []
   for (let i = 0; i < lines.length; i++) {
-    if (new RegExp(`vuln-code-snippet vuln-line.*${challengeKey}`).exec(lines[i]) != null) {
+    const line = lines[i]
+
+    if (line.includes(`vuln-code-snippet vuln-line ${challengeKey}`)) {
       vulnLines.push(i + 1)
-    } else if (new RegExp(`vuln-code-snippet neutral-line.*${challengeKey}`).exec(lines[i]) != null) {
+    } else if (line.includes(`vuln-code-snippet neutral-line ${challengeKey}`)) {
       neutralLines.push(i + 1)
     }
   }
@@ -109,4 +111,8 @@ export async function getCodeChallenges (): Promise<Map<string, CachedCodeChalle
     }
   }
   return _internalCodeChallenges
+}
+
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }

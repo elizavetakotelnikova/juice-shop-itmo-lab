@@ -5,6 +5,7 @@
 
 import { type Request, type Response, type NextFunction } from 'express'
 import { CaptchaModel } from '../models/captcha'
+import { Parser } from 'expr-eval';
 
 export function captchas () {
   return async (req: Request, res: Response) => {
@@ -19,8 +20,13 @@ export function captchas () {
     const secondOperator = operators[Math.floor((Math.random() * 3))]
 
     const expression = firstTerm.toString() + firstOperator + secondTerm.toString() + secondOperator + thirdTerm.toString()
-    const answer = eval(expression).toString() // eslint-disable-line no-eval
-
+    let answer;
+    try {
+      const parser = new Parser();
+      answer = parser.evaluate(expression).toString();
+    } catch (err) {
+      throw new Error('Invalid expression');
+    }
     const captcha = {
       captchaId,
       captcha: expression,

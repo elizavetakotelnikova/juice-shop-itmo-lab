@@ -6,6 +6,7 @@
 import fs from 'node:fs'
 import pug from 'pug'
 import config from 'config'
+import escapeHtml from 'escape-html';
 import { type Request, type Response } from 'express'
 import { AllHtmlEntities as Entities } from 'html-entities'
 
@@ -55,8 +56,10 @@ export const promotionVideo = () => {
       let template = buf.toString()
       const subs = getSubsFromFile()
 
-      challengeUtils.solveIf(challenges.videoXssChallenge, () => { return utils.contains(subs, '</script><script>alert(`xss`)</script>') })
-
+      const safeSubs = escapeHtml(subs);
+      challengeUtils.solveIf(challenges.videoXssChallenge, () => {
+        return utils.contains(safeSubs, '&lt;/script&gt;&lt;script&gt;alert(`xss`)&lt;/script&gt;');
+      });
       const themeKey = config.get<string>('application.theme') as keyof typeof themes
       const theme = themes[themeKey] || themes['bluegrey-lightgreen']
       template = template.replace(/_title_/g, entities.encode(config.get<string>('application.name')))
@@ -68,7 +71,10 @@ export const promotionVideo = () => {
       template = template.replace(/_primDark_/g, theme.primDark)
       const fn = pug.compile(template)
       let compiledTemplate = fn()
-      compiledTemplate = compiledTemplate.replace('<script id="subtitle"></script>', '<script id="subtitle" type="text/vtt" data-label="English" data-lang="en">' + subs + '</script>')
+      compiledTemplate = compiledTemplate.replace(
+          '<script id="subtitle"></script>',
+          `<script id="subtitle" type="text/vtt" data-label="English" data-lang="en" data-subs="${safeSubs}"></script>`
+      );
       res.send(compiledTemplate)
     })
   }

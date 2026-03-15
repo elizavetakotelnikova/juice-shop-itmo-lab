@@ -44,9 +44,23 @@ export function waitForInputToHaveValue (inputSelector: string, value: string, o
         config = json.config
       }
       const propertyChain = options.replacement[1].split('.')
-      let replacementValue = config
+      let replacementValue: any = Object.create(null)
+
+      for (const key of Object.keys(config)) {
+        replacementValue[key] = config[key]
+      }
+      const blockedProps = ['__proto__', 'constructor', 'prototype']
+
       for (const property of propertyChain) {
-        replacementValue = replacementValue[property]
+        if (blockedProps.includes(property)) {
+          throw new Error(`Access to property "${property}" is not allowed`)
+        }
+        if (replacementValue && Object.prototype.hasOwnProperty.call(replacementValue, property)) {
+          replacementValue = replacementValue[property]
+        } else {
+          replacementValue = undefined
+          break
+        }
       }
       value = value.replace(options.replacement[0], replacementValue)
     }

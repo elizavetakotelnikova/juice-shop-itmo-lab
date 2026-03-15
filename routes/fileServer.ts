@@ -4,6 +4,7 @@
  */
 
 import path from 'node:path'
+import fs from 'fs';
 import { type Request, type Response, type NextFunction } from 'express'
 
 import * as utils from '../lib/utils'
@@ -23,18 +24,39 @@ export function servePublicFiles () {
     }
   }
 
-  function verify (file: string, res: Response, next: NextFunction) {
-    if (file && (endsWithAllowlistedFileType(file) || (file === 'incident-support.kdbx'))) {
-      file = security.cutOffPoisonNullByte(file)
-
-      challengeUtils.solveIf(challenges.directoryListingChallenge, () => { return file.toLowerCase() === 'acquisitions.md' })
-      verifySuccessfulPoisonNullByteExploit(file)
-
-      res.sendFile(path.resolve('ftp/', file))
-    } else {
-      res.status(403)
-      next(new Error('Only .md and .pdf files are allowed!'))
+  function verify(file: string, res: Response, next: NextFunction) {
+    if (!file || !(endsWithAllowlistedFileType(file) || file === 'incident-support.kdbx')) {
+      res.status(403);
+      return next(new Error('Only .md and .pdf files are allowed!'));
     }
+
+    file = security.cutOffPoisonNullByte(file);
+
+    challengeUtils.solveIf(challenges.directoryListingChallenge, () => file.toLowerCase() === 'acquisitions.md');
+    verifySuccessfulPoisonNullByteExploit(file);
+
+    const ftpDir = path.resolve('ftp');
+    const requestedPath = path.join(ftpDir, file);
+    const resolvedPath = path.resolve(requestedPath);
+
+    const ftpDirWithSep = ftpDir + path.sep;
+    if (!resolvedPath.startsWith(ftpDirWithSep)) {
+      res.status(403);
+      return next(new Error('Invalid file path – access denied'));
+    }
+
+    if (!fs.existsSync(resolvedPath)) {
+      res.status(404);
+      return next(new Error('File not found or invalid path'));
+    }
+
+    const safeFileName = path.basename(resolvedPath);
+    if (!endsWithAllowlistedFileType(safeFileName) && safeFileName !== 'incident-support.kdbx') {
+      res.status(403);
+      return next(new Error('Only .md and .pdf files are allowed!'));
+    }
+
+    res.sendFile(resolvedPath);
   }
 
   function verifySuccessfulPoisonNullByteExploit (file: string) {
